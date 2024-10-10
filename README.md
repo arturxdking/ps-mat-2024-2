@@ -1,4 +1,4 @@
-# Criação do projeto back-end
+# Criação do projeto back-end.
 
 npx @aka-demy/create-express-app
 
