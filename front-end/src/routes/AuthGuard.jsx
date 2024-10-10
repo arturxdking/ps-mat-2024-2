@@ -14,13 +14,13 @@ export default function AuthGuard({ children }) {
   const navigate = useNavigate()
 
   async function checkAuthUser() {
-    setStatus('PROCESSING')
+    if(setStatus) setStatus('PROCESSING')
     showWaiting(true)
     try {
       const authUser = await myfetch.get('/users/me')
       setAuthUser(authUser)
     }
-    catch (error) {
+    catch(error) {
       setAuthUser(null)
       console.error(error)
       navigate('/login', { replace: true })
@@ -34,15 +34,15 @@ export default function AuthGuard({ children }) {
   React.useEffect(() => {
     // Salva a rota atual para posterior redirecionamento,
     // caso a rota atual não seja o próprio login
-    if (!location.pathname.includes('login')) setRedirectLocation(location)
+    if(! location.pathname.includes('login')) setRedirectLocation(location)
 
     checkAuthUser()
   }, [location])
 
   // Enquanto ainda não temos a resposta do back-end para /users/me,
   // exibimos um componente Waiting
-  if (status === 'PROCESSING') return <Waiting />
+  if(status === 'PROCESSING') return <Waiting />
 
   return authUser ? children : <Navigate to="/login" replace />
-
+  
 }

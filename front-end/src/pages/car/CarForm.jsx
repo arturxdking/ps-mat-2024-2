@@ -1,371 +1,387 @@
-import React from 'react'
-import Typography from '@mui/material/Typography'
+import { Checkbox, FormControlLabel } from '@mui/material'
 import Box from '@mui/material/Box'
+import Button from '@mui/material/Button'
+import MenuItem from '@mui/material/MenuItem'
 import TextField from '@mui/material/TextField'
-import InputMask from 'react-input-mask'
+import Typography from '@mui/material/Typography'
 import { DatePicker, LocalizationProvider } from '@mui/x-date-pickers'
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFnsV3'
-import { ptBR }  from 'date-fns/locale/pt-BR'
 import { parseISO } from 'date-fns'
-import MenuItem from '@mui/material/MenuItem'
-import Button from '@mui/material/Button'
+import { ptBR } from 'date-fns/locale/pt-BR'
+import React from 'react'
+import InputMask from 'react-input-mask'
+import { useNavigate, useParams } from 'react-router-dom'
+import { ZodError } from 'zod'
+import myfetch from '../../lib/myfetch'
+import Car from '../../models/car'
 import useConfirmDialog from '../../ui/useConfirmDialog'
 import useNotification from '../../ui/useNotification'
 import useWaiting from '../../ui/useWaiting'
-import { useNavigate, useParams } from 'react-router-dom'
-import myfetch from '../../lib/myfetch'
-import Customer from '../../models/customer'
-import { ZodError } from 'zod'
 
-export default function CustomerForm() {
-  
+export default function CarForm() {
+  /*
+    Por padrão, todos os campos do nosso formulário terão como
+    valor inicial uma string vazia. A exceção é o campo birth_date
+    que, devido ao funcionamento do componente DatePicker, deve
+    iniciar valendo null.
+  */
   const formDefaults = {
-    name: '',
-    ident_document: '',
-    birth_date: null,
-    street_name: '',
-    house_number: '',
-    complements: '',
-    district: '',
-    municipality: '',
-    state: '',
-    phone: '',
-    email: ''
+    brand: '',
+    model: '',
+    color: '',
+    year_manufacture: '',
+    imported: false,
+    plates: '',
+    selling_date: null,
+    customer_id: ''
   }
 
   const [state, setState] = React.useState({
-    customer: { ...formDefaults },
+    car: { ...formDefaults },
     formModified: false,
-    inputErrors: {}
+    customers: [],
+    inputErrors: {},
   })
-  const {
-    customer,
-    formModified,
-    inputErrors
-  } = state
+  const { car, customers, formModified, inputErrors } = state
 
-  const states = [
-    { value: 'DF', label: 'Distrito Federal' },
-    { value: 'ES', label: 'Espírito Santo' },
-    { value: 'GO', label: 'Goiás' },
-    { value: 'MS', label: 'Mato Grosso do Sul' },
-    { value: 'MG', label: 'Minas Gerais' },
-    { value: 'PR', label: 'Paraná' },
-    { value: 'RJ', label: 'Rio de Janeiro' },
-    { value: 'SP', label: 'São Paulo' },
-  ]
+  const params = useParams()
+  const navigate = useNavigate()
 
   const { askForConfirmation, ConfirmDialog } = useConfirmDialog()
   const { notify, Notification } = useNotification()
   const { showWaiting, Waiting } = useWaiting()
-  const navigate = useNavigate()
 
-  const phoneMaskFormatChars = {
-    '9': '[0-9]',
-    '%': '[\s0-9]'  // \s significa espaço em branco
+  const colors = [
+    { value: 'AMARELO', label: 'AMARELO' },
+    { value: 'AZUL', label: 'AZUL' },
+    { value: 'BRANCO', label: 'BRANCO' },
+    { value: 'CINZA', label: 'CINZA' },
+    { value: 'DOURADO', label: 'DOURADO' },
+    { value: 'LARANJA', label: 'LARANJA' },
+    { value: 'MARROM', label: 'MARROM' },
+    { value: 'PRATA', label: 'PRATA' },
+    { value: 'PRETO', label: 'PRETO' },
+    { value: 'ROSA', label: 'ROSA' },
+    { value: 'ROXO', label: 'ROXO' },
+    { value: 'VERDE', label: 'VERDE' },
+    { value: 'VERMELHO', label: 'VERMELHO' },
+  ]
+
+  const plateMaskFormatChars = {
+    9: '[0-9]', // somente dígitos
+    $: '[0-9A-J]', // dígito de 0 a 9 ou uma letra de A a J.
+    A: '[A-Z]', //  letra maiúscula de A a Z.
   }
 
-  const params = useParams()
-
-  function handleFieldChange(e) {
-    // Tira uma cópia do objeto que representa o cliente
-    const customerCopy = { ...customer }
-    // Atualiza o campo modificado em customerCopy
-    customerCopy[e.target.name] = e.target.value
-    // Atualiza a variável de estado, substituindo o objeto customer
-    // pela cópia atualizada
-    setState({ ...state, customer: customerCopy, formModified: true })
+  const currentYear = new Date().getFullYear()
+  const minYear = 1960
+  const years = []
+  for (let year = currentYear; year >= minYear; year--) {
+    years.push(year)
   }
 
-  async function handleFormSubmit(e) {
-    e.preventDefault()    // Evita o recarregamento da página
-    // Exibir a tela de espera
-    showWaiting(true)
+  const [imported, setImported] = React.useState(false)
+  // car.imported = imported
+  const handleImportedChange = (event) => {
+    setImported(event.target.checked)
+  }
+
+  function handleFieldChange(event) {
+    const carCopy = { ...car }
+    carCopy[event.target.name] = event.target.value
+    setState({ ...state, car: carCopy, formModified: true })
+  }
+
+  async function handleFormSubmit(event) {
+    event.preventDefault(); // Evita que a página seja recarregada
+    showWaiting(true); // Exibe a tela de espera
     try {
-      // Invoca a validação dos dados de entrada da biblioteca Zod
-      // por meio do model Customer
-      Customer.parse(customer)
+      // Invoca a validação dos dados da biblioteca Zod
+      // por meio do model Car === '' ? '' : parseFloat(value)
 
-      // Envia os dados para o back-end para criar um novo cliente
-      // no banco de dados
-      // Se houver parâmetro na rota, significa que estamos editando.
-      // Portanto, precisamos enviar os dados ao back-end com o verbo PUT
-      if(params.id) await myfetch.put(`/customers/${params.id}`, customer)
-      
-      // Senão, os dados serão enviados com o método POST para a criação de
-      // um novo cliente
-      else await myfetch.post('/customers', customer)
+      if(car.selling_price === '') car.selling_price = null
 
-      // Deu certo, vamos exibir a mensagem de feedback que, quando fechada,
-      // vai nos mandar de volta para a listagem de clientes
+      Car.parse(car)
+      console.log(car)
+
+      // Se houver parâmetro na rota, significa que estamos modificando
+      // um cliente já existente. A requisição será enviada ao back-end
+      // usando o método PUT
+      if (params.id) await myfetch.put(`/cars/${params.id}`, car)
+      // Caso contrário, estamos criando um novo cliente, e enviaremos
+      // a requisição com o método POST
+      else await myfetch.post('/cars', car)
+
+      // Deu certo, vamos exbir a mensagem de feedback que, quando for
+      // fechada, vai nos mandar de volta para a listagem de clientes
       notify('Item salvo com sucesso.', 'success', 4000, () => {
         navigate('..', { relative: 'path', replace: true })
       })
-    }
-    catch(error) {
+    } catch (error) {
       console.error(error)
-      if(error instanceof ZodError) {
+      if (error instanceof ZodError) {
         // Formamos um objeto contendo os erros do Zod e
-        // os colocamos na variável de estado inputErrors
-        const errorMessages = {}
-        for(let e of error.issues) errorMessages[e.path[0]] = e.message
-        setState({ ...state, inputErrors: errorMessages })
+        // o colocamos na variável de estado inputErrors
+        const messages = {}
+        for (let i of error.issues) messages[i.path[0]] = i.message
+        setState({ ...state, inputErrors: messages })
         notify('Há campos com valores inválidos no formulário', 'error')
-      }
-      else {
-        console.error(error)
-        // Deu errado, exibimos o erro e permanecemos na página do formulário
-        notify(error.message, 'error')
-      }
-    }
-    finally {
+      } else notify(error.message, 'error')
+    } finally {
+      // Desliga a tela de espera, seja em caso de sucesso, seja em caso de erro
       showWaiting(false)
     }
   }
-  
-  // useEffect() que é executado uma vez no carregamento da página.
-  // Verifica se a rota tem parâmetros e, caso tenha, significa que estamos
-  // vindo do botão de edição. Nesse caso, chama a função loadData() para
-  // buscar os dados do cliente a ser editado no back-end
+
+  /*
+    useEffect() que é executado apenas uma vez, no carregamento do componente.
+    Verifica se a rota tem parâmetro. Caso tenha, significa que estamos vindo
+    do componente de listagem por meio do botão de editar, e precisamos chamar
+    a função loadData() para buscar no back-end os dados do cliente a ser editado
+  */
   React.useEffect(() => {
-    if(params.id) loadData()
+    loadData()
   }, [])
 
   async function loadData() {
     showWaiting(true)
     try {
-      const result = await myfetch.get(`/customers/${params.id}`)
-      
-      // Converte o formato de data armazenado no banco de dados
-      // para o formato reconhecido pelo componente DatePicker
-      result.birth_date = parseISO(result.birth_date)
 
-      setState({...state, customer: result})
-    }
-    catch(error) {
+      let car = { ...formDefaults }, customers = []
+
+      // Busca a lista de clientes para preencher o combo de escolha
+      // do cliente que comprou o carro
+      customers = await myfetch.get('/customers')
+
+      // Se houver parâmetro na rota, precisamos buscar o carro para
+      // ser editado
+      if(params.id) {
+
+        car = await myfetch.get(`/cars/${params.id}`)
+
+        // Converte o formato de data armazenado no banco de dados
+        // para o formato reconhecido pelo componente DatePicker
+        
+        if(car.selling_date) {
+          car.selling_date = parseISO(car.selling_date)
+        }
+      }
+
+      setState({ ...state, car, customers })
+
+    } catch (error) {
       console.error(error)
       notify(error.message, 'error')
-    }
-    finally {
+    } finally {
       showWaiting(false)
     }
   }
 
   async function handleBackButtonClick() {
-    if(formModified && 
-      ! await askForConfirmation('Há informações não salvas. Deseja realmente sair?')) {
-      return  // Sai sem fazer nada
-    }
-    // Navega para a página anterior
+    if (
+      formModified &&
+      !(await askForConfirmation(
+        'Há informações não salvas. Deseja realmente sair?'
+      ))
+    )
+      return; // Sai da função sem fazer nada
+
+    // Navega de volta para a página de listagem
     navigate('..', { relative: 'path', replace: true })
   }
 
-  return(
-    <>
+  function handleKeyDown(event) {
+    if(event.key === 'Delete') {
+      const stateCopy = {...state}
+      stateCopy.car.customer_id = null
+      setState(stateCopy)
+    }
+  }
 
+  return (
+    <>
       <ConfirmDialog />
       <Notification />
       <Waiting />
 
-      <Typography variant="h1" gutterBottom>
-        { params.id ? `Editar cliente ${params.id}` : 'Cadastrar novo cliente' }
+      <Typography variant='h1' gutterBottom>
+        {params.id ? `Editar carro #${params.id}` : 'Cadastrar novo carro'}
       </Typography>
 
-      <Box className="form-fields">
+      <Box className='form-fields'>
         <form onSubmit={handleFormSubmit}>
-
-          <TextField 
-            name="name"
-            label="Nome completo"
-            variant="filled"
+          <TextField
+            name='brand'
+            label='Marca do carro'
+            variant='filled'
             required
             fullWidth
-            autoFocus
-            value={customer.name}
-            onChange={handleFieldChange} 
-            error={inputErrors?.name}
-            helperText={inputErrors?.name} 
+            value={car.brand}
+            onChange={handleFieldChange}
+            helperText={inputErrors?.brand}
+            error={inputErrors?.brand}
+          />
+          <TextField
+            name='model'
+            label='Modelo do carro'
+            variant='filled'
+            required
+            fullWidth
+            value={car.model}
+            onChange={handleFieldChange}
+            helperText={inputErrors?.model}
+            error={inputErrors?.model}
           />
 
+          <TextField
+            name='color'
+            label='Color'
+            variant='filled'
+            required
+            fullWidth
+            value={car.color}
+            onChange={handleFieldChange}
+            select
+            helperText={inputErrors?.state}
+            error={inputErrors?.state}
+          >
+            {colors.map((s) => (
+              <MenuItem key={s.value} value={s.value}>
+                {s.label}
+              </MenuItem>
+            ))}
+          </TextField>
+
+          <TextField
+            name='year_manufacture'
+            label='Ano de fabricação'
+            variant='filled'
+            required
+            fullWidth
+            select
+            value={car.year_manufacture}
+            onChange={handleFieldChange}
+            helperText={inputErrors?.year_manufacture}
+            error={inputErrors?.year_manufacture}
+          >
+            {years.map((year) => (
+              <MenuItem key={year} value={year}>
+                {year}
+              </MenuItem>
+            ))}
+          </TextField>
+
+          <div class="MuiFormControl-root">
+            <FormControlLabel
+              control={
+                <Checkbox
+                  name='imported'
+                  variant='filled'
+                  value={(car.imported = imported)}
+                  checked={imported}
+                  onChange={handleImportedChange}
+                  color='primary'
+                />
+              }
+              label='Importado'
+            />
+          </div>
+
           <InputMask
-            mask="999.999.999-99"
-            value={customer.ident_document}
+            mask='AAA-9$99'
+            formatChars={plateMaskFormatChars}
+            maskChar=' '
+            value={car.plates}
             onChange={handleFieldChange}
           >
-            {
-              () => 
-                <TextField 
-                  name="ident_document"
-                  label="CPF"
-                  variant="filled"
-                  required
-                  fullWidth
-                  error={inputErrors?.ident_document}
-                  helperText={inputErrors?.ident_document}                    
-                />
-            }
+            {() => (
+              <TextField
+                name='plates'
+                label='Placa'
+                variant='filled'
+                required
+                fullWidth
+                helperText={inputErrors?.phone}
+                error={inputErrors?.phone}
+              />
+            )}
           </InputMask>
 
-          <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={ptBR}>
-            <DatePicker 
-              label="Data de nascimento"
-              value={customer.birth_date}
-              onChange={ value => handleFieldChange({ 
-                target: { name: 'birth_date', value }}
-              )}
+          <LocalizationProvider
+            dateAdapter={AdapterDateFns}
+            adapterLocale={ptBR}
+          >
+            <DatePicker
+              label='Data de venda'
+              value={car.selling_date}
+              onChange={(value) =>
+                handleFieldChange({
+                  target: { name: 'selling_date', value },
+                })
+              }
               slotProps={{
                 textField: {
                   variant: 'filled',
                   fullWidth: true,
-                  error: inputErrors?.birth_date,
-                  helperText: inputErrors?.birth_date
-                }
+                  helperText: inputErrors?.selling_date,
+                  error: inputErrors?.selling_date,
+                },
               }}
             />
           </LocalizationProvider>
 
-          <TextField 
-            name="street_name"
-            label="Logradouro"
-            variant="filled"
-            required
+          <TextField
+            name='selling_price'
+            label='Preço de venda'
+            variant='filled'
+            type='number'
             fullWidth
-            placeholder="Ex.: Rua Principal"
-            value={customer.street_name}
+            value={car.selling_price}
             onChange={handleFieldChange}
-            error={inputErrors?.street_name}
-            helperText={inputErrors?.street_name}  
+            helperText={inputErrors?.selling_price}
+            error={inputErrors?.selling_price}
           />
 
-          <TextField 
-            name="house_number"
-            label="Nº"
-            variant="filled"
+          <TextField
+            name='customer_id'
+            label='Cliente'
+            variant='filled'
             required
             fullWidth
-            value={customer.house_number}
+            value={car.customer_id}
             onChange={handleFieldChange}
-            error={inputErrors?.house_number}
-            helperText={inputErrors?.house_number}  
-          />
-
-          <TextField 
-            name="complements"
-            label="Complemento"
-            variant="filled"
-            fullWidth
-            placeholder="Apto., bloco, casa, etc."
-            value={customer.complements}
-            onChange={handleFieldChange}
-            error={inputErrors?.complements}
-            helperText={inputErrors?.complements} 
-          />
-
-          <TextField 
-            name="district"
-            label="Bairro"
-            variant="filled"
-            required
-            fullWidth
-            value={customer.district}
-            onChange={handleFieldChange} 
-            error={inputErrors?.district}
-            helperText={inputErrors?.district}  
-          />
-
-          <TextField 
-            name="municipality"
-            label="Município"
-            variant="filled"
-            required
-            fullWidth
-            value={customer.municipality}
-            onChange={handleFieldChange} 
-            error={inputErrors?.municipality}
-            helperText={inputErrors?.municipality}  
-          />
-
-          <TextField 
-            name="state"
-            label="UF"
-            variant="filled"
-            required
-            fullWidth
-            value={customer.state}
-            onChange={handleFieldChange}
+            onKeyDown={handleKeyDown}
             select
-            error={inputErrors?.state}
-            helperText={inputErrors?.state} 
+            helperText={inputErrors?.customer_id || 'Tecle DEL para limpar o cliente'}
+            error={inputErrors?.customer_id}
           >
-            {
-              states.map(s => 
-                <MenuItem key={s.value} value={s.value}>
-                  {s.label}
-                </MenuItem>
-              )
-            }
+            {customers.map((c) => (
+              <MenuItem key={c.id} value={c.id}>
+                {c.name}
+              </MenuItem>
+            ))}
           </TextField>
 
-          <InputMask
-            mask="(99) %9999-9999"
-            formatChars={phoneMaskFormatChars}
-            maskChar="_"
-            value={customer.phone}
-            onChange={handleFieldChange}
+          <Box
+            sx={{
+              display: 'flex',
+              justifyContent: 'space-around',
+              width: '100%',
+            }}
           >
-            {
-              () => 
-                <TextField 
-                  name="phone"
-                  label="Telefone/celular"
-                  variant="filled"
-                  required
-                  fullWidth 
-                  error={inputErrors?.phone}
-                  helperText={inputErrors?.phone}                   
-                />
-            }
-          </InputMask>
-
-          <TextField 
-            name="email"
-            label="E-mail"
-            variant="filled"
-            type="email"
-            required
-            fullWidth
-            value={customer.email}
-            onChange={handleFieldChange}  
-            error={inputErrors?.email}
-            helperText={inputErrors?.email} 
-          />
-
-          <Box sx={{ display: 'flex', justifyContent: 'space-around', width: '100%' }}>
-            <Button
-              variant="contained"
-              color="secondary"
-              type="submit"
-            >
+            <Button variant='contained' color='secondary' type='submit'>
               Salvar
             </Button>
-
-            <Button
-              variant="outlined"
-              onClick={handleBackButtonClick}
-            >
+            <Button variant='outlined' onClick={handleBackButtonClick}>
               Voltar
             </Button>
           </Box>
 
-          {<Box sx={{ fontFamily: 'monospace', display: 'flex', flexDirection: 'column', width: '100%' }}>
-            {JSON.stringify(customer)}
-            <hr />
-            {JSON.stringify(inputErrors)}
-          </Box>}
-        
+          {/*<Box sx={{ fontFamily: 'monospace', display: 'flex', width: '100%' }}>
+            {JSON.stringify(car)}
+          </Box>*/}
         </form>
       </Box>
-
     </>
   )
 }

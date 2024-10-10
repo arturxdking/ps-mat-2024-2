@@ -12,7 +12,7 @@ import CssBaseline from '@mui/material/CssBaseline'
 import FooterBar from './ui/FooterBar'
 import AppRoutes from './routes/AppRoutes'
 import Box from '@mui/material/Box'
-import { BrowserRouter, redirect } from 'react-router-dom'
+import { BrowserRouter } from 'react-router-dom'
 import AuthUserContext from './contexts/AuthUserContext'
 
 import myfetch from './lib/myfetch'
@@ -26,7 +26,7 @@ function App() {
 
   React.useEffect(() => {
     // Busca as informações do usuário autenticado quando
-    // a aplicação é carregado
+    // a aplicação é carregada
     fetchAuthUser()
   }, [])
 
@@ -34,7 +34,8 @@ function App() {
     try {
       const authUser = await myfetch.get('/users/me')
       setAuthUser(authUser)
-    } catch (error) {
+    }
+    catch(error) {
       console.error(error)
     }
   }
@@ -44,21 +45,19 @@ function App() {
       <ThemeProvider theme={theme}>
         <CssBaseline />
         <BrowserRouter>
-          <AuthUserContext.Provider value={{
-            authUser,
-            setAuthUser,
-            redirectLocation,
-            setRedirectLocation
+          <AuthUserContext.Provider value={{ 
+            authUser, setAuthUser,
+            redirectLocation, setRedirectLocation
           }} >
-
+          
             <TopBar />
-
-            <Box sx={{
+            
+            <Box sx={{ 
               m: '24px 24px 72px 24px'
             }}>
               <AppRoutes />
             </Box>
-
+            
             <FooterBar />
 
           </AuthUserContext.Provider>
