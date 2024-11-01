@@ -8,17 +8,18 @@ router.get('/', function (req, res) {
 })
 
 // Esta rota será chamada por um cronjob para fazer
-// uma requisição ao banco de dados e tentar
-// manter o projeto do Supabase ativo
-router.get('/keep-alive', async function (req, res) {
+// uma requisição ao banco de dados e tentar manter
+// o projeto do Supabase ativo
+router.get('/keep-alive', async function(req, res) {
   try {
-    /* Uma simples requisição ao BD, obtendo o número de usuários
-    cadastrados */
+    // Uma simples requisição ao BD, obtendo o número
+    // de usuários cadastrados
     await prisma.user.count()
 
-    // HTTP 204: No content
+    // HTTP 204: No Content
     res.status(204).end()
-  } catch (error) {
+  }
+  catch(error) {
     console.error(error)
 
     // HTTP 500: Internal Server Error

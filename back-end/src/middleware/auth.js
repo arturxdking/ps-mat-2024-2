@@ -14,15 +14,15 @@ const bypassRoutes = [
   { url: '/keep-alive', method: 'GET' }
 ]
 
-export default function (req, res, next) {
+export default function(req, res, next) {
 
   /*
     Verificamos se a rota interceptada corresponde a alguma das
     exceções cadastradas acima. Sendo o caso, permite continuar
     sem verificar a autorização
   */
-  for (let route of bypassRoutes) {
-    if (route.url === req.url && route.method === req.method) {
+  for(let route of bypassRoutes) {
+    if(route.url === req.url && route.method === req.method) {
       next()
       return
     }
@@ -36,7 +36,7 @@ export default function (req, res, next) {
 
   // 2. SE O TOKEN NÃO FOR ENCONTRADO EM UM COOKIE, ENTÃO
   //    PROCURA NO HEADER DE AUTENTICAÇÃO
-  if (!token) {
+  if(! token) {
     // O token é enviado por meio do cabeçalho 'authorization'
     // da request
     const authHeader = req.headers['authorization']
@@ -45,7 +45,7 @@ export default function (req, res, next) {
 
     // O cabeçalho 'authorization' não existe, retorna
     // HTTP 403: Forbidden
-    if (!authHeader) {
+    if(! authHeader) {
       console.error('*** ERRO: acesso negado por falta de cabeçalho de autorização ***')
       return res.status(403).end()
     }
@@ -62,7 +62,7 @@ export default function (req, res, next) {
 
     // Token inválido ou expirdo, retorna
     // HTTP 403: Forbidden
-    if (error) {
+    if(error) {
       console.error('*** ERRO: acesso negado; token inválido ou expirado ***')
       return res.status(403).end()
     }
