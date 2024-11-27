@@ -1,5 +1,7 @@
 # Criação do projeto back-end.
 
+* PROVA 2 está no commit (01/11) Trabalho 2 que eu já havia feito
+
 npx @aka-demy/create-express-app
 
 Perguntas feitas pelo comando:
